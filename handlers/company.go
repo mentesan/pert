@@ -61,7 +61,6 @@ func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
 		return
 	}
-	log.Println("Remove data from Redis")
 	c.JSON(http.StatusOK, company)
 }
 

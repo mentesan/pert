@@ -26,8 +26,7 @@ import (
 )
 
 var authHandler *handlers.AuthHandler
-
-// var contactsHandler *handlers.ContactsHandler
+var usersHandler *handlers.UsersHandler
 var companiesHandler *handlers.CompaniesHandler
 var projectsHandler *handlers.ProjectsHandler
 
@@ -46,6 +45,7 @@ func init() {
 	// Authentication handler
 	authHandler = handlers.NewAuthHandler(ctx, usersCollection)
 	//	contactsHandler = handlers.NewContactsHandler(ctx, contactsCollection )
+	usersHandler = handlers.NewUsersHandler(ctx, usersCollection)
 	companiesHandler = handlers.NewCompaniesHandler(ctx, companiesCollection)
 	projectsHandler = handlers.NewProjectsHandler(ctx, projectsCollection)
 
@@ -74,6 +74,12 @@ func main() {
 	authorized := router.Group("/")
 	authorized.Use(authHandler.AuthMiddleware())
 	{
+		authorized.GET("/users", usersHandler.ListUsersHandler)
+		authorized.POST("/users", usersHandler.NewUserHandler)
+		authorized.PUT("/users/:id", usersHandler.UpdateUserHandler)
+		authorized.DELETE("/users/:id", usersHandler.DeleteUserHandler)
+		authorized.GET("/users/search", usersHandler.SearchUserHandler)
+
 		authorized.GET("/companies", companiesHandler.ListCompaniesHandler)
 		authorized.POST("/companies", companiesHandler.NewCompanyHandler)
 		authorized.PUT("/companies/:id", companiesHandler.UpdateCompanyHandler)

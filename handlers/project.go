@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"pert/models"
 	"time"
@@ -68,7 +67,6 @@ func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new project"})
 		return
 	}
-	log.Println("Remove data from Redis")
 	c.JSON(http.StatusOK, project)
 }
 

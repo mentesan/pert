@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
+	"log"
 	"net/http"
 	"pert/models"
 	"time"
@@ -13,6 +13,7 @@ import (
 	"github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
@@ -43,13 +44,21 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 		return
 	}
 
-	h := sha256.New()
-
 	cur := handler.collection.FindOne(handler.ctx, bson.M{
 		"username": user.Username,
-		"password": string(h.Sum([]byte(user.Password))),
 	})
 	if cur.Err() != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+	// Get "User Type(admin|pentester|client)" from database
+	var actualUser models.User
+	cur.Decode(&actualUser)
+
+	log.Println("PASSWORDS DB/Informed:", actualUser.Password, user.Password)
+	// Compare password
+	err := bcrypt.CompareHashAndPassword([]byte(actualUser.Password), []byte(user.Password))
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
@@ -59,6 +68,10 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Set("username", user.Username)
 	session.Set("token", sessionToken)
+	session.Set("type", actualUser.Type)
+	log.Println("Username: ", user.Username)
+	log.Println("Token: ", sessionToken)
+	log.Println("Type: ", actualUser.Type)
 	session.Save()
 	msg := "User signed in: " + sessionToken
 	c.JSON(http.StatusOK, gin.H{"message": msg})
