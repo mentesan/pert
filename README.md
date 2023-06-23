@@ -14,7 +14,7 @@ Projects
 # Frameworks
 - CRUD
 
-*# User types
+# User types
 
 * Admin
   * Can see everything
