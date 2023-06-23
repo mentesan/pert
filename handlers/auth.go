@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"net/http"
-	"recipes-api/models"
+	"pert/models"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -54,39 +54,14 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 		return
 	}
 
-	/*
-		expirationTime := time.Now().Add(10 * time.Minute)
-		claims := &Claims{
-			Username: user.Username,
-			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: expirationTime.Unix(),
-			},
-		}
-	*/
-
 	// Session
 	sessionToken := xid.New().String()
 	session := sessions.Default(c)
 	session.Set("username", user.Username)
 	session.Set("token", sessionToken)
 	session.Save()
-
-	c.JSON(http.StatusOK, gin.H{"message": "User signed in"})
-
-	/*
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		jwtOutput := JWTOutput{
-			Token:   tokenString,
-			Expires: expirationTime,
-		}
-		c.JSON(http.StatusOK, jwtOutput)
-	*/
+	msg := "User signed in: " + sessionToken
+	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
 func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
@@ -105,41 +80,6 @@ func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
 	session.Save()
 
 	c.JSON(http.StatusOK, gin.H{"message": "New session issued"})
-
-	/*
-		tokenValue := c.GetHeader("Authorization")
-		claims := &Claims{}
-		tkn, err := jwt.ParseWithClaims(tokenValue, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		if tkn == nil || !tkn.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			return
-		}
-		if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 30*time.Second {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Token is not expired yet"})
-			return
-		}
-
-		expirationTime := time.Now().Add(5 * time.Minute)
-		claims.ExpiresAt = expirationTime.Unix()
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString(os.Getenv("JWT_SECRET"))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		jwtOutput := JWTOutput{
-			Token:   tokenString,
-			Expires: expirationTime,
-		}
-		c.JSON(http.StatusOK, jwtOutput)
-	*/
 }
 
 func (handler *AuthHandler) SignOutHandler(c *gin.Context) {
@@ -158,20 +98,5 @@ func (handler *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 		}
 		c.Next()
-		/*
-			tokenValue := c.GetHeader("Authorization")
-			claims := &Claims{}
-
-			tkn, err := jwt.ParseWithClaims(tokenValue, claims, func(token *jwt.Token) (interface{}, error) {
-				return []byte(os.Getenv("JWT_SECRET")), nil
-			})
-			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
-			}
-			if tkn == nil || !tkn.Valid {
-				c.AbortWithStatus(http.StatusUnauthorized)
-			}
-			c.Next()
-		*/
 	}
 }

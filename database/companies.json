@@ -1,0 +1,52 @@
+[
+    {
+        "id": "c0283p3d0cvuglq85log",
+        "name": "Sapeca empreendimentos",
+        "address": "Rua Oregano, 23 Bauru/SP",
+        "site": "wwww.spkempre.com.br",
+        "info": "Oregano Marinated Chicken",
+        "description": "Oregano Marinated Chicken",
+        "createdAt": "2021-01-17T19:28:52.803062+01:00",
+        "contacts": [
+            {
+                "firstName": "Fulano",
+                "lastName" : "Alvarez",
+                "email": "fulano.alvarez@spk.com",
+                "phone": "+55(14)9.9701.2500",
+                "info": "Ligar após as 15hs"
+            },
+            {
+                "firstName": "Ciclano",
+                "lastName" : "Alva",
+                "email": "ciclanono.alvarez@spk.com",
+                "phone": "+55(14)9.9701.2500",
+                "info": "Ligar após as 15hs"
+            }
+        ]
+    },
+    {
+        "id": "b3283p39jcvuglqkklpo",
+        "name": "Morcego servicos",
+        "address": "Av maromba, 32 Bauru/SP",
+        "site": "wwww.mcsvcs.com.br",
+        "info": "Barbecue sauce",
+        "description": "Descricao do cliente",
+        "createdAt": "2022-03-17T18:28:52.807062+05:00",
+        "contacts": [
+            {
+                "firstName": "Conan",
+                "lastName" : "Barbaro",
+                "email": "conan.barbaro@spk.com",
+                "phone": "+55(14)9.9701.2500",
+                "info": "Ligar após as 18hs"
+            },
+            {
+                "firstName": "Ciclando",
+                "lastName" : "Deca",
+                "email": "ciclando.deca@spk.com",
+                "phone": "+55(14)9.9701.2500",
+                "info": "Ligar após as 11hs"
+            }
+        ]
+    }
+]

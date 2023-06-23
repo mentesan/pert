@@ -1,3 +1,13 @@
+// @title PERT API
+// @version 1.0
+// @description Pentest Execution and Reporting Tool
+//
+// @contact.name Fabio Almeida
+// @contact.email mentesan@gmail.com
+// @license MIT
+// @license.url https://github.com/mentesan/pert/blob/main/LICENSE
+
+// @Basepath /
 package main
 
 import (
@@ -10,14 +20,16 @@ import (
 	"github.com/gin-contrib/sessions"
 	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 var authHandler *handlers.AuthHandler
-var recipesHandler *handlers.RecipesHandler
+
+// var contactsHandler *handlers.ContactsHandler
+var companiesHandler *handlers.CompaniesHandler
+var projectsHandler *handlers.ProjectsHandler
 
 func init() {
 	ctx := context.Background()
@@ -26,42 +38,25 @@ func init() {
 		log.Fatal(err)
 	}
 	log.Println("Connected to MongoDB")
-	collection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("recipes")
+	// contactsCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("contacts")
+	usersCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("users")
+	companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+	projectsCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("projects")
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
+	// Authentication handler
+	authHandler = handlers.NewAuthHandler(ctx, usersCollection)
+	//	contactsHandler = handlers.NewContactsHandler(ctx, contactsCollection )
+	companiesHandler = handlers.NewCompaniesHandler(ctx, companiesCollection)
+	projectsHandler = handlers.NewProjectsHandler(ctx, projectsCollection)
 
-	status := redisClient.Ping(redisClient.Context())
-	log.Println("Redis status:", status)
-
-	recipesHandler = handlers.NewRecipesHandler(ctx, collection, redisClient)
-
-	collectionUsers := client.Database(os.Getenv("MONGO_DATABASE")).Collection("users")
-	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
-
-	//authHandler = &handlers.AuthHandler{}
 	/*
-		recipes = make([]Recipe, 0)
-		file, err := ioutil.ReadFile("recipes.json")
-		if err != nil {
-			return
-		}
-		_ = json.Unmarshal([]byte(file), &recipes)
-
-		var listOfRecipes []interface{}
-		for _, recipe := range recipes {
-			listOfRecipes = append(listOfRecipes, recipe)
-		}
-		collection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("recipes")
-		insertManyResult, err := collection.InsertMany(ctx, listOfRecipes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println("Inserted recipes:", len(insertManyResult.InsertedIDs))
+		redisClient := redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "",
+			DB:       0,
+		})
 	*/
+
 	fmt.Println("END INIT")
 }
 
@@ -69,11 +64,9 @@ func main() {
 	router := gin.Default()
 
 	store, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte("secret"))
-	router.Use(sessions.Sessions("recipes_api", store))
+	router.Use(sessions.Sessions("pert", store))
 
 	// Public endpoints
-	router.GET("/recipes", recipesHandler.ListRecipesHandler)
-
 	router.POST("/signin", authHandler.SignInHandler)
 	router.POST("/refresh", authHandler.RefreshHandler)
 	router.POST("/signout", authHandler.SignOutHandler)
@@ -81,10 +74,18 @@ func main() {
 	authorized := router.Group("/")
 	authorized.Use(authHandler.AuthMiddleware())
 	{
-		authorized.POST("/recipes", recipesHandler.NewRecipeHandler)
-		authorized.PUT("/recipes/:id", recipesHandler.UpdateRecipeHandler)
-		authorized.DELETE("/recipes/:id", recipesHandler.DeleteRecipeHandler)
-		authorized.GET("/recipes/search", recipesHandler.SearchRecipeHandler)
+		authorized.GET("/companies", companiesHandler.ListCompaniesHandler)
+		authorized.POST("/companies", companiesHandler.NewCompanyHandler)
+		authorized.PUT("/companies/:id", companiesHandler.UpdateCompanyHandler)
+		authorized.DELETE("/companies/:id", companiesHandler.DeleteCompanyHandler)
+		authorized.GET("/companies/search", companiesHandler.SearchCompanyHandler)
+
+		authorized.GET("/projects", projectsHandler.ListProjectsHandler)
+		authorized.GET("/projects/:companyId", projectsHandler.ListProjectsHandler)
+		authorized.POST("/projects", projectsHandler.NewProjectHandler)
+		authorized.PUT("/projects/:id", projectsHandler.UpdateProjectHandler)
+		authorized.DELETE("/projects/:id", projectsHandler.DeleteProjectHandler)
+		authorized.GET("/projects/search", projectsHandler.SearchProjectHandler)
 	}
 	router.Run()
 }

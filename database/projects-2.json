@@ -1,0 +1,78 @@
+{
+    "name": "Pentest 02",
+    "type": "Whitebox",
+    "status": "Done",
+    "framework_id": "649445aec118203d58c19b05",
+    "userIds": [
+        {"userid": "AE02"}, 
+        {"userid": "EEF89"}
+    ],
+    "companyId": "b3283p39jcvuglqkklpo",
+    "contacts": [
+        { 
+            "firstName": "Conan",
+            "lastName" : "Alvarez",
+            "email": "fulano.alvarez@spk.com",
+            "phone": "+55(14)9.9701.2500",
+            "info": "Ligar após as 15hs"
+        },
+        { 
+            "firstName": "Ciclano",
+            "lastName" : "Alva",
+            "email": "ciclanono.alvarez@spk.com",
+            "phone": "+55(14)9.9701.2500",
+            "info": "Ligar após as 15hs"
+        }
+    ],
+    "targets": [
+        {
+            "name": "siteA",
+            "url": "wwww.brabo.spk.net",
+            "ip": "2.2.2.2",
+            "description": "site C",
+            "network": "2.2.2.0/24",
+            "owner": "brabo cloud"
+        }
+    ],
+    "vulns": [
+        {
+            "name": "XSS pagina de saida",
+            "risk": {
+                "name": "Alto",
+                "severity": "6",
+                "description": "permite moscar dados",
+                "color": "red"
+            },
+            "description": "Xss em /login?name=...",
+            "status": "confirmed",
+            "poc": {
+                "name": "poc 01",
+                "description": "poc sapeca",
+                "images": [
+                    { "path": "/var/images/poc-03-a.png" },
+                    { "path": "/var/images/poc-03-b.png" },
+                    { "path": "/var/images/poc-03-c.png" }
+                ]
+            }
+        },
+        {
+            "name": "XSS listagem de clientes",
+            "risk": {
+                "name": "Médio",
+                "severity": "5",
+                "description": "permite explorar",
+                "color": "red"
+            },
+            "description": "Xss em /login?username=...",
+            "status": "confirmed",
+            "poc": {
+                "name": "poc 01",
+                "description": "poc sapeca",
+                "images": [
+                    { "path": "/var/images/poc-05-a.png" },
+                    { "path": "/var/images/poc-05-b.png" }
+                ]
+            }
+        }
+    ]
+}
