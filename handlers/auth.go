@@ -21,7 +21,7 @@ type AuthHandler struct {
 	ctx        context.Context
 }
 type Claims struct {
-	Username string `json:"username"`
+	Email string `json:"email"`
 	jwt.StandardClaims
 }
 
@@ -45,10 +45,10 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	}
 
 	cur := handler.collection.FindOne(handler.ctx, bson.M{
-		"username": user.Username,
+		"email": user.Email,
 	})
 	if cur.Err() != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 	// Get "User Type(admin|pentester|client)" from database
@@ -59,17 +59,16 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	// Compare password
 	err := bcrypt.CompareHashAndPassword([]byte(actualUser.Password), []byte(user.Password))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
 	// Session
 	sessionToken := xid.New().String()
 	session := sessions.Default(c)
-	session.Set("username", user.Username)
+	session.Set("email", user.Email)
 	session.Set("token", sessionToken)
 	session.Set("type", actualUser.Type)
-	log.Println("Username: ", user.Username)
 	log.Println("Token: ", sessionToken)
 	log.Println("Type: ", actualUser.Type)
 	session.Save()
@@ -80,7 +79,7 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionToken := session.Get("token")
-	sessionUser := session.Get("username")
+	sessionEmail := session.Get("email")
 	if sessionToken == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session cookie"})
 		return
@@ -88,7 +87,7 @@ func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
 
 	// Session
 	sessionToken = xid.New().String()
-	session.Set("username", sessionUser.(string))
+	session.Set("email", sessionEmail.(string))
 	session.Set("token", sessionToken)
 	session.Save()
 
