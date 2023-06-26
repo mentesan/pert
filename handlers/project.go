@@ -7,6 +7,7 @@ import (
 	"pert/models"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,7 +20,6 @@ type ProjectsHandler struct {
 }
 
 func NewProjectsHandler(ctx context.Context, collection *mongo.Collection) *ProjectsHandler {
-
 	return &ProjectsHandler{
 		collection: collection,
 		ctx:        ctx,
@@ -27,6 +27,20 @@ func NewProjectsHandler(ctx context.Context, collection *mongo.Collection) *Proj
 }
 
 func (handler *ProjectsHandler) ListProjectsHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Proceed to list
 	companyId := c.Param("companyId")
 	var cur *mongo.Cursor
 	var err error
@@ -52,6 +66,21 @@ func (handler *ProjectsHandler) ListProjectsHandler(c *gin.Context) {
 }
 
 func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to insert
 	var project models.Project
 	if err := c.ShouldBindJSON(&project); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -71,6 +100,21 @@ func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 }
 
 func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to Update
 	id := c.Param("id")
 	var project models.Project
 	if err := c.ShouldBindJSON(&project); err != nil {
@@ -105,6 +149,21 @@ func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
 }
 
 func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to Delete
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -118,6 +177,21 @@ func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
 }
 
 func (handler *ProjectsHandler) SearchProjectHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to Search
 	firstName := c.Query("firstName")
 
 	filter := bson.D{{"firstName", bson.D{{"$eq", firstName}}}}

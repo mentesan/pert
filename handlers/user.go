@@ -71,71 +71,72 @@ func (handler *UsersHandler) NewUserHandler(c *gin.Context) {
 	if sessionType != "admin" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
-	} else {
-		if userVerified(c, session) == false {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
-			return
-		}
-		var user models.User
-		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
+	}
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-		// Validate all fields
-		var hashedPass []byte
-		var fEmail, fPassword, fFirstName, fLastName, fType, fCompanyId bool
-		if len(strings.TrimSpace(user.Email)) > 0 && govalidator.IsEmail(user.Email) {
-			fEmail = true
-		}
-		if len(strings.TrimSpace(user.FirstName)) > 0 && govalidator.IsAlpha(user.FirstName) {
-			fFirstName = true
-		}
-		if len(strings.TrimSpace(user.LastName)) > 0 && govalidator.IsAlpha(user.LastName) {
-			fLastName = true
-		}
-		if len(strings.TrimSpace(user.Password)) > 0 {
-			// Hash password
-			hashedPass, _ = bcrypt.GenerateFromPassword([]byte(user.Password), 8)
-			user.Password = string(hashedPass)
-			fPassword = true
-		}
-		if len(strings.TrimSpace(user.Type)) > 0 && govalidator.IsAlpha(user.Type) {
-			if user.Type == "admin" || user.Type == "pentester" || user.Type == "client" {
-				fType = true
-			}
-		}
-		// CompanyId
-		if len(strings.TrimSpace(user.CompanyId)) > 0 {
-			// Check if company really exists
-			client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
-			if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-				log.Fatal(err)
-			}
-			companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
-			companiesHandler := NewCompaniesHandler(c, companiesCollection)
-			companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
-			companyCursor := companiesHandler.collection.FindOne(c, bson.M{
-				"_id": companyId,
-			})
-			// If query OK
-			if companyCursor.Err() == nil {
-				fCompanyId = true
-			}
-		}
-
-		// If all fields OK, proceed to insert
-		if fEmail && fPassword && fFirstName && fLastName && fType && fCompanyId {
-			user.ID = primitive.NewObjectID()
-			_, err := handler.collection.InsertOne(c, user)
-			if err != nil {
-				fmt.Println(err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
-				return
-			}
-			c.JSON(http.StatusOK, user)
+	// Validate all fields
+	var hashedPass []byte
+	var fEmail, fPassword, fFirstName, fLastName, fType, fCompanyId bool
+	if len(strings.TrimSpace(user.Email)) > 0 && govalidator.IsEmail(user.Email) {
+		fEmail = true
+	}
+	if len(strings.TrimSpace(user.FirstName)) > 0 && govalidator.IsAlpha(user.FirstName) {
+		fFirstName = true
+	}
+	if len(strings.TrimSpace(user.LastName)) > 0 && govalidator.IsAlpha(user.LastName) {
+		fLastName = true
+	}
+	if len(strings.TrimSpace(user.Password)) > 0 {
+		// Hash password
+		hashedPass, _ = bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+		user.Password = string(hashedPass)
+		fPassword = true
+	}
+	if len(strings.TrimSpace(user.Type)) > 0 && govalidator.IsAlpha(user.Type) {
+		if user.Type == "admin" || user.Type == "pentester" || user.Type == "client" {
+			fType = true
 		}
 	}
+	// CompanyId
+	if len(strings.TrimSpace(user.CompanyId)) > 0 {
+		// Check if company really exists
+		client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+			log.Fatal(err)
+		}
+		companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+		companiesHandler := NewCompaniesHandler(c, companiesCollection)
+		companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
+		companyCursor := companiesHandler.collection.FindOne(c, bson.M{
+			"_id": companyId,
+		})
+		// If query OK
+		if companyCursor.Err() == nil {
+			fCompanyId = true
+		}
+	}
+
+	// If all fields OK, proceed to insert
+	if fEmail && fPassword && fFirstName && fLastName && fType && fCompanyId {
+		user.ID = primitive.NewObjectID()
+		_, err := handler.collection.InsertOne(c, user)
+		if err != nil {
+			fmt.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
+	return
 }
 
 func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
@@ -164,7 +165,6 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 	var fieldUpdated int8
 
 	if len(strings.TrimSpace(user.Email)) > 0 && govalidator.IsEmail(user.Email) {
-		log.Println("Entrou aqui")
 		update := bson.D{{"$set", bson.D{{"email", user.Email}}}}
 		_, err := handler.collection.UpdateOne(c, filter, update)
 		if err != nil {
@@ -183,7 +183,6 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 		fieldUpdated++
 	}
 	if len(strings.TrimSpace(user.LastName)) > 0 && govalidator.IsAlpha(user.LastName) {
-		log.Println("Entrou aqui")
 		update := bson.D{{"$set", bson.D{{"lastName", user.LastName}}}}
 		_, err := handler.collection.UpdateOne(c, filter, update)
 		if err != nil {
@@ -193,7 +192,6 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 		fieldUpdated++
 	}
 	if len(strings.TrimSpace(user.Password)) > 0 {
-		log.Println("Entrou aqui")
 		// Hash password
 		hashedPass, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
 		update := bson.D{{"$set", bson.D{{"password", string(hashedPass)}}}}

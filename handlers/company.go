@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"pert/models"
+	"strings"
 	"time"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -73,23 +75,36 @@ func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
 		return
 	}
 
-	// Proceed to insert
 	var company models.Company
 	if err := c.ShouldBindJSON(&company); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
-		return
-
-	}
-	company.ID = primitive.NewObjectID()
-	company.CreatedAt = time.Now()
-	_, err := handler.collection.InsertOne(c, company)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, company)
+	// Validate all fields
+	var fName, fAddress, fSite bool
+	if len(strings.TrimSpace(company.Name)) > 0 && govalidator.IsAlpha(company.Name) {
+		fName = true
+	}
+	if len(strings.TrimSpace(company.Address)) > 0 && govalidator.IsAlpha(company.Address) {
+		fAddress = true
+	}
+	if len(strings.TrimSpace(company.Site)) > 0 && govalidator.IsURL(company.Site) {
+		fSite = true
+	}
+	// If ok, insert company
+	if fName && fAddress && fSite {
+		company.ID = primitive.NewObjectID()
+		company.CreatedAt = time.Now()
+		_, err := handler.collection.InsertOne(c, company)
+		if err != nil {
+			fmt.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
+			return
+		}
+		c.JSON(http.StatusOK, company)
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
+	return
 }
 
 func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
@@ -116,31 +131,72 @@ func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
 	}
 
 	objectId, _ := primitive.ObjectIDFromHex(id)
-	fmt.Println("OBJECT ID:", objectId)
-
 	company.UpdatedAt = time.Now()
 	filter := bson.D{{"_id", objectId}}
-	update := bson.D{{"$set", bson.D{
-		{"name", company.Name},
-		{"address", company.Address},
-		{"site", company.Site},
-		{"info", company.Info},
-		{"description", company.Description},
-		{"updatedAt", company.UpdatedAt},
-		{"contacts", company.Contacts},
-	}}}
-	_, err := handler.collection.UpdateOne(c, filter, update)
+	var fieldUpdated int8
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error()})
-		return
+	// Validate all relevant fields
+	if len(strings.TrimSpace(company.Name)) > 0 && govalidator.IsAlpha(company.Name) {
+		update := bson.D{{"$set", bson.D{{"name", company.Name}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(company.Address)) > 0 && govalidator.IsAlpha(company.Address) {
+		update := bson.D{{"$set", bson.D{{"address", company.Address}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(company.Site)) > 0 && govalidator.IsURL(company.Site) {
+		update := bson.D{{"$set", bson.D{{"site", company.Site}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(company.Contacts[0].FirstName)) > 0 &&
+		govalidator.IsAlpha(company.Contacts[0].FirstName) {
+
+		update := bson.D{{"$set", bson.D{{"contacts", company.Contacts}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Company has been updated"})
+	if fieldUpdated > 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "Company has been updated"})
+		return
+	}
 }
 
 func (handler *CompaniesHandler) DeleteCompanyHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to Delete
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
