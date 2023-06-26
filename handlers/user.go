@@ -33,7 +33,20 @@ func NewUsersHandler(ctx context.Context, collection *mongo.Collection) *UsersHa
 }
 
 func (handler *UsersHandler) ListUsersHandler(c *gin.Context) {
-	log.Printf("Request to MongoDB")
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Proceed to list users
 	cur, err := handler.collection.Find(handler.ctx, bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "err.Error()"})
@@ -51,115 +64,47 @@ func (handler *UsersHandler) ListUsersHandler(c *gin.Context) {
 }
 
 func (handler *UsersHandler) NewUserHandler(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
-		return
-
-	}
-	user.ID = primitive.NewObjectID()
-	_, err := handler.collection.InsertOne(c, user)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
-		return
-	}
-	c.JSON(http.StatusOK, user)
-}
-
-func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
-	session := sessions.Default(c)
 	// Get session values
-	sessionEmail := session.Get("email")
+	session := sessions.Default(c)
 	sessionType := session.Get("type")
 
 	if sessionType != "admin" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	} else {
-		// Compare email and usertype of Session with Database values
-		cur := handler.collection.FindOne(handler.ctx, bson.M{
-			"email": sessionEmail,
-			"type":  sessionType,
-		})
-		if cur.Err() != nil {
+		if userVerified(c, session) == false {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
 			return
 		}
-		// Proceed to update informed values
-		id := c.Param("id")
 		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		objectId, _ := primitive.ObjectIDFromHex(id)
-		fmt.Println("OBJECT ID:", objectId)
-		filter := bson.D{{"_id", objectId}}
-		var fieldUpdated int8
-
+		// Validate all fields
+		var hashedPass []byte
+		var fEmail, fPassword, fFirstName, fLastName, fType, fCompanyId bool
 		if len(strings.TrimSpace(user.Email)) > 0 && govalidator.IsEmail(user.Email) {
-			log.Println("Entrou aqui")
-			update := bson.D{{"$set", bson.D{{"email", user.Email}}}}
-			_, err := handler.collection.UpdateOne(c, filter, update)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			fieldUpdated++
+			fEmail = true
 		}
 		if len(strings.TrimSpace(user.FirstName)) > 0 && govalidator.IsAlpha(user.FirstName) {
-			update := bson.D{{"$set", bson.D{{"firstName", user.FirstName}}}}
-			_, err := handler.collection.UpdateOne(c, filter, update)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			fieldUpdated++
+			fFirstName = true
 		}
 		if len(strings.TrimSpace(user.LastName)) > 0 && govalidator.IsAlpha(user.LastName) {
-			log.Println("Entrou aqui")
-			update := bson.D{{"$set", bson.D{{"lastName", user.LastName}}}}
-			_, err := handler.collection.UpdateOne(c, filter, update)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			fieldUpdated++
+			fLastName = true
 		}
-		// todo: Convert password to hash
 		if len(strings.TrimSpace(user.Password)) > 0 {
-			log.Println("Entrou aqui")
 			// Hash password
-			//h := sha256.New()
-			hashedPass, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
-			update := bson.D{{"$set", bson.D{{"password", string(hashedPass)}}}}
-			_, err := handler.collection.UpdateOne(c, filter, update)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			fieldUpdated++
+			hashedPass, _ = bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+			user.Password = string(hashedPass)
+			fPassword = true
 		}
-		// Is UserType informed and valid?
 		if len(strings.TrimSpace(user.Type)) > 0 && govalidator.IsAlpha(user.Type) {
 			if user.Type == "admin" || user.Type == "pentester" || user.Type == "client" {
-				update := bson.D{{"$set", bson.D{{"type", user.Type}}}}
-				log.Println("USER TYPE:", user.Type)
-				_, err := handler.collection.UpdateOne(c, filter, update)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					return
-				}
-				fieldUpdated++
-			} else {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid"})
-				return
+				fType = true
 			}
 		}
-
 		// CompanyId
 		if len(strings.TrimSpace(user.CompanyId)) > 0 {
 			// Check if company really exists
@@ -167,62 +112,197 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 			if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 				log.Fatal(err)
 			}
-			log.Println("Connected to MongoDB")
 			companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
 			companiesHandler := NewCompaniesHandler(c, companiesCollection)
 			companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
 			companyCursor := companiesHandler.collection.FindOne(c, bson.M{
 				"_id": companyId,
 			})
-			if companyCursor.Err() != nil {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Company does not exist"})
-				return
+			// If query OK
+			if companyCursor.Err() == nil {
+				fCompanyId = true
 			}
-
-			// If Company exists, proceed to update
-			update := bson.D{{"$set", bson.D{{"companyId", user.CompanyId}}}}
-			_, err = handler.collection.UpdateOne(c, filter, update)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			fieldUpdated++
 		}
-		if len(strings.TrimSpace(user.FirstName)) > 0 {
-			update := bson.D{{"$set", bson.D{{"firstName", user.FirstName}}}}
+
+		// If all fields OK, proceed to insert
+		if fEmail && fPassword && fFirstName && fLastName && fType && fCompanyId {
+			user.ID = primitive.NewObjectID()
+			_, err := handler.collection.InsertOne(c, user)
+			if err != nil {
+				fmt.Println(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
+				return
+			}
+			c.JSON(http.StatusOK, user)
+		}
+	}
+}
+
+func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+
+	if sessionType != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Proceed to update informed values
+	id := c.Param("id")
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	objectId, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", objectId}}
+	var fieldUpdated int8
+
+	if len(strings.TrimSpace(user.Email)) > 0 && govalidator.IsEmail(user.Email) {
+		log.Println("Entrou aqui")
+		update := bson.D{{"$set", bson.D{{"email", user.Email}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(user.FirstName)) > 0 && govalidator.IsAlpha(user.FirstName) {
+		update := bson.D{{"$set", bson.D{{"firstName", user.FirstName}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(user.LastName)) > 0 && govalidator.IsAlpha(user.LastName) {
+		log.Println("Entrou aqui")
+		update := bson.D{{"$set", bson.D{{"lastName", user.LastName}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(user.Password)) > 0 {
+		log.Println("Entrou aqui")
+		// Hash password
+		hashedPass, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+		update := bson.D{{"$set", bson.D{{"password", string(hashedPass)}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// Is UserType informed and valid?
+	if len(strings.TrimSpace(user.Type)) > 0 && govalidator.IsAlpha(user.Type) {
+		if user.Type == "admin" || user.Type == "pentester" || user.Type == "client" {
+			update := bson.D{{"$set", bson.D{{"type", user.Type}}}}
+			log.Println("USER TYPE:", user.Type)
 			_, err := handler.collection.UpdateOne(c, filter, update)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 			fieldUpdated++
-		}
-
-		// If one or more field updated
-		if fieldUpdated > 0 {
-			c.JSON(http.StatusOK, gin.H{"message": "User has been updated"})
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "User NOT updated"})
-
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid"})
+			return
 		}
+	}
+
+	// CompanyId
+	if len(strings.TrimSpace(user.CompanyId)) > 0 {
+		// Check if company really exists
+		client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Connected to MongoDB")
+		companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+		companiesHandler := NewCompaniesHandler(c, companiesCollection)
+		companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
+		companyCursor := companiesHandler.collection.FindOne(c, bson.M{
+			"_id": companyId,
+		})
+		if companyCursor.Err() != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Company does not exist"})
+			return
+		}
+
+		// If Company exists, proceed to update
+		update := bson.D{{"$set", bson.D{{"companyId", user.CompanyId}}}}
+		_, err = handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+
+	// If one or more field updated
+	if fieldUpdated > 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "User has been updated"})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "User NOT updated"})
 
 	}
+
 }
 
 func (handler *UsersHandler) DeleteUserHandler(c *gin.Context) {
-	id := c.Param("id")
-	objectId, _ := primitive.ObjectIDFromHex(id)
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
 
-	filter := bson.D{{"_id", objectId}}
-	_, err := handler.collection.DeleteOne(c, filter)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	if sessionType != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
+	} else {
+		// Compare email and usertype of Session with Database values
+		if userVerified(c, session) == false {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+			return
+		}
+		// Proceed to Delete
+		id := c.Param("id")
+		objectId, _ := primitive.ObjectIDFromHex(id)
+
+		filter := bson.D{{"_id", objectId}}
+		_, err := handler.collection.DeleteOne(c, filter)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "User has beem deleted"})
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "User has beem deleted"})
 }
 
 func (handler *UsersHandler) SearchUserHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+	// If Ok proceed to search
 	firstName := c.Query("firstName")
 
 	filter := bson.D{{"firstName", bson.D{{"$eq", firstName}}}}

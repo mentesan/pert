@@ -3,11 +3,11 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"pert/models"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,7 +20,6 @@ type CompaniesHandler struct {
 }
 
 func NewCompaniesHandler(ctx context.Context, collection *mongo.Collection) *CompaniesHandler {
-
 	return &CompaniesHandler{
 		collection: collection,
 		ctx:        ctx,
@@ -28,7 +27,21 @@ func NewCompaniesHandler(ctx context.Context, collection *mongo.Collection) *Com
 }
 
 func (handler *CompaniesHandler) ListCompaniesHandler(c *gin.Context) {
-	log.Printf("Request to MongoDB")
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to list
 	cur, err := handler.collection.Find(handler.ctx, bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "err.Error()"})
@@ -46,6 +59,21 @@ func (handler *CompaniesHandler) ListCompaniesHandler(c *gin.Context) {
 }
 
 func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to insert
 	var company models.Company
 	if err := c.ShouldBindJSON(&company); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -65,6 +93,21 @@ func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
 }
 
 func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	// Proceed to update
 	id := c.Param("id")
 	var company models.Company
 	if err := c.ShouldBindJSON(&company); err != nil {
@@ -111,8 +154,22 @@ func (handler *CompaniesHandler) DeleteCompanyHandler(c *gin.Context) {
 }
 
 func (handler *CompaniesHandler) SearchCompanyHandler(c *gin.Context) {
-	firstName := c.Query("firstName")
+	// Get session values
+	session := sessions.Default(c)
+	sessionType := session.Get("type")
+	// Session Type
+	if sessionType == "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		return
+	}
+	// Verify if database says the same...
+	if userVerified(c, session) == false {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
+		return
+	}
 
+	// Proceed to search
+	firstName := c.Query("firstName")
 	filter := bson.D{{"firstName", bson.D{{"$eq", firstName}}}}
 	cur, err := handler.collection.Find(c, filter)
 	if err != nil {
