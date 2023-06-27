@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"pert/models"
+	"pert-api/models"
 	"strings"
 	"time"
 
@@ -33,7 +33,7 @@ func (handler *CompaniesHandler) ListCompaniesHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -179,6 +179,8 @@ func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Company has been updated"})
 		return
 	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error"})
+	return
 }
 
 func (handler *CompaniesHandler) DeleteCompanyHandler(c *gin.Context) {
@@ -214,7 +216,7 @@ func (handler *CompaniesHandler) SearchCompanyHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}

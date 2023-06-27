@@ -3,15 +3,21 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
-	"pert/models"
+	"os"
+	"pert-api/models"
+	"strings"
 	"time"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type ProjectsHandler struct {
@@ -70,7 +76,7 @@ func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -80,23 +86,44 @@ func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 		return
 	}
 
-	// Proceed to insert
+	// Proceed
 	var project models.Project
 	if err := c.ShouldBindJSON(&project); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	// Validate all fields
+	var fName, fType, fTargets, fFramework bool
+	if len(strings.TrimSpace(project.Name)) > 0 && govalidator.IsAlpha(project.Name) {
+		fName = true
+	}
+	if len(strings.TrimSpace(project.Type)) > 0 && govalidator.IsAlpha(project.Type) {
+		fType = true
+	}
+	if len(strings.TrimSpace(project.Targets[0].Name)) > 0 &&
+		govalidator.IsAlpha(project.Targets[0].Name) {
+		fTargets = true
+	}
+	if len(strings.TrimSpace(project.Framework.Name)) > 0 &&
+		govalidator.IsAlpha(project.Framework.Name) {
+		fFramework = true
+	}
+	// Copy Framework from Default
 
+	// If ok, insert project
+	if fName && fType && fTargets && fFramework {
+		project.ID = primitive.NewObjectID()
+		project.CreatedAt = time.Now()
+		_, err := handler.collection.InsertOne(c, project)
+		if err != nil {
+			fmt.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new project"})
+			return
+		}
+		c.JSON(http.StatusOK, project)
 	}
-	project.ID = primitive.NewObjectID()
-	project.CreatedAt = time.Now()
-	_, err := handler.collection.InsertOne(c, project)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new project"})
-		return
-	}
-	c.JSON(http.StatusOK, project)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new project"})
+	return
 }
 
 func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
@@ -104,7 +131,7 @@ func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -121,31 +148,108 @@ func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	objectId, _ := primitive.ObjectIDFromHex(id)
-	fmt.Println("OBJECT ID:", objectId)
-
 	project.CreatedAt = time.Now()
 	filter := bson.D{{"_id", objectId}}
-	update := bson.D{{"$set", bson.D{
-		{"name", project.Name},
-		{"type", project.Type},
-		{"description", project.Description},
-		{"status", project.Status},
-		{"contacts", project.Contacts},
-		{"targets", project.Targets},
-		{"vulns", project.Vulns},
-		{"createdAt", project.CreatedAt},
-	}}}
-	_, err := handler.collection.UpdateOne(c, filter, update)
+	var fieldUpdated int8
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error()})
+	if len(strings.TrimSpace(project.Name)) > 0 && govalidator.IsAlpha(project.Name) {
+		update := bson.D{{"$set", bson.D{{"name", project.Name}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	if len(strings.TrimSpace(project.Type)) > 0 && govalidator.IsAlpha(project.Type) {
+		update := bson.D{{"$set", bson.D{{"type", project.Type}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// CompanyId
+	if len(strings.TrimSpace(project.CompanyId)) > 0 {
+		// Check if company really exists
+		client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+			log.Fatal(err)
+		}
+		companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+		companiesHandler := NewCompaniesHandler(c, companiesCollection)
+		companyId, _ := primitive.ObjectIDFromHex(project.CompanyId)
+		companyCursor := companiesHandler.collection.FindOne(c, bson.M{
+			"_id": companyId,
+		})
+		if companyCursor.Err() != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Company does not exist"})
+			return
+		}
+
+		// If Company exists, proceed to update
+		update := bson.D{{"$set", bson.D{{"companyId", project.CompanyId}}}}
+		_, err = handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// Description
+	if len(strings.TrimSpace(project.Description)) > 0 && govalidator.IsAlpha(project.Description) {
+		update := bson.D{{"$set", bson.D{{"description", project.Description}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// Status
+	if len(strings.TrimSpace(project.Status)) > 0 && govalidator.IsAlpha(project.Status) {
+		update := bson.D{{"$set", bson.D{{"status", project.Status}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// Targets
+	if len(strings.TrimSpace(project.Targets[0].Name)) > 0 &&
+		govalidator.IsAlpha(project.Targets[0].Name) {
+
+		update := bson.D{{"$set", bson.D{{"targets", project.Targets}}}}
+		_, err := handler.collection.UpdateOne(c, filter, update)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		fieldUpdated++
+	}
+	// TODO Framework (mus get Framework from Framework Collection)
+	/*
+		if len(strings.TrimSpace(project.Status)) > 0 && govalidator.IsAlpha(project.Status) {
+			update := bson.D{{"$set", bson.D{{"status", project.Status}}}}
+			_, err := handler.collection.UpdateOne(c, filter, update)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			fieldUpdated++
+		}
+	*/
+
+	if fieldUpdated > 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "Project has been updated"})
 		return
 	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error"})
+	return
 
-	c.JSON(http.StatusOK, gin.H{"message": "Project has been updated"})
 }
 
 func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
@@ -153,7 +257,7 @@ func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -181,7 +285,7 @@ func (handler *ProjectsHandler) SearchProjectHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -192,12 +296,12 @@ func (handler *ProjectsHandler) SearchProjectHandler(c *gin.Context) {
 	}
 
 	// Proceed to Search
-	firstName := c.Query("firstName")
+	companyId := c.Query("companyId")
 
-	filter := bson.D{{"firstName", bson.D{{"$eq", firstName}}}}
+	filter := bson.D{{"companyId", bson.D{{"$eq", companyId}}}}
 	cur, err := handler.collection.Find(c, filter)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "No Project found"})
 		return
 	}
 	defer cur.Close(c)

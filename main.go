@@ -5,7 +5,7 @@
 // @contact.name Fabio Almeida
 // @contact.email mentesan@gmail.com
 // @license MIT
-// @license.url https://github.com/mentesan/pert/blob/main/LICENSE
+// @license.url https://github.com/mentesan/pert-api/blob/main/LICENSE
 
 // @Basepath /
 package main
@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	handlers "pert/handlers"
+	handlers "pert-api/handlers"
 
 	"github.com/gin-contrib/sessions"
 	redisStore "github.com/gin-contrib/sessions/redis"
@@ -64,7 +64,7 @@ func main() {
 	router := gin.Default()
 
 	store, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte("secret"))
-	router.Use(sessions.Sessions("pert", store))
+	router.Use(sessions.Sessions("pert-api", store))
 
 	// Public endpoints
 	router.POST("/signin", authHandler.SignInHandler)

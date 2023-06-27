@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"pert/models"
+	"pert-api/models"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"

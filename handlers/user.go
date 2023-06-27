@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"pert/models"
+	"pert-api/models"
 	"strings"
 
 	"github.com/asaskevich/govalidator"
@@ -37,7 +37,7 @@ func (handler *UsersHandler) ListUsersHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 	// Session Type
-	if sessionType == "client" {
+	if sessionType != "admin" || sessionType != "pentester" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
 		return
 	}
@@ -251,11 +251,10 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 	// If one or more field updated
 	if fieldUpdated > 0 {
 		c.JSON(http.StatusOK, gin.H{"message": "User has been updated"})
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "User NOT updated"})
-
+		return
 	}
-
+	c.JSON(http.StatusBadRequest, gin.H{"message": "User NOT updated"})
+	return
 }
 
 func (handler *UsersHandler) DeleteUserHandler(c *gin.Context) {

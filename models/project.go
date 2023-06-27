@@ -13,11 +13,9 @@ type Project struct {
 	CompanyId   string             `json:"companyId" bson:"companyId"`
 	Description string             `json:"description" bson:"description"`
 	Status      string             `json:"status" bson:"status"`
-	Contacts    []Contact          `json:"contacts" bson:"contacts"`
 	Targets     []Target           `json:"targets" bson:"targets"`
-	//	Framework Framework          `json:"framework" bson:"framework"`
-	Vulns     []Vuln    `json:"vulns" bson:"vunls"`
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+	Framework   Framework          `json:"framework" bson:"framework"`
+	CreatedAt   time.Time          `json:"createdAt" bson:"createdAt"`
 }
 
 type Target struct {

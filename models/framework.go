@@ -12,7 +12,11 @@ type Framework struct {
 type Phase struct {
 	Name        string `json:"name" bson:"name"`
 	Description string `json:"description" bson:"description"`
+	Info        string `json:"info" bson:"info"`
+	Url         string `json:"url" bson:"url"`
 	Tools       []Tool `json:"tools" bson:"tools"`
+	// TODO|DOING|DONE
+	Status string `json:"status" bson:"status"`
 }
 
 type Tool struct {

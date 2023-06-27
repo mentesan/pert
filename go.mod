@@ -1,4 +1,4 @@
-module pert
+module pert-api
 
 go 1.19
 
