@@ -1,13 +1,15 @@
-// @title PERT API
-// @version 1.0
-// @description Pentest Execution and Reporting Tool
-//
+// @title Pentest Execution and Reporting Tool (PERT) API
+// @version 0.0.1
 // @contact.name Fabio Almeida
+// @contact.url https://github.com/mentesan
 // @contact.email mentesan@gmail.com
-// @license MIT
+// @license.name MIT
 // @license.url https://github.com/mentesan/pert-api/blob/main/LICENSE
-
+// @schemes http
+// @host localhost:8080
 // @Basepath /
+// @accept json
+// @produce json
 package main
 
 import (
@@ -15,11 +17,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	docs "pert-api/docs"
 	handlers "pert-api/handlers"
 
 	"github.com/gin-contrib/sessions"
 	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -70,6 +75,8 @@ func main() {
 	router.POST("/signin", authHandler.SignInHandler)
 	router.POST("/refresh", authHandler.RefreshHandler)
 	router.POST("/signout", authHandler.SignOutHandler)
+	docs.SwaggerInfo.BasePath = "/"
+	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	authorized := router.Group("/")
 	authorized.Use(authHandler.AuthMiddleware())

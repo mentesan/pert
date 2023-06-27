@@ -28,6 +28,14 @@ func NewCompaniesHandler(ctx context.Context, collection *mongo.Collection) *Com
 	}
 }
 
+// ListCompaniesHandler
+// @Summary Get companies list
+// @Produce json
+// @Success 200 {object} models.Company
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} Cant list companies
+// @Router /companies [get]
 func (handler *CompaniesHandler) ListCompaniesHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -60,6 +68,14 @@ func (handler *CompaniesHandler) ListCompaniesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, companies)
 }
 
+// NewCompaniesHandler
+// @Summary Add new company
+// @Produce json
+// @Param request body models.Company true "JSON for new company"
+// @Success 200 {string} Company added
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /companies [post]
 func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -101,12 +117,21 @@ func (handler *CompaniesHandler) NewCompanyHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
 			return
 		}
-		c.JSON(http.StatusOK, company)
+		c.JSON(http.StatusOK, gin.H{"message": "Company added"})
 	}
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new company"})
 	return
 }
 
+// UpdateCompaniesHandler
+// @Summary Update company information
+// @Produce json
+// @Param id query string true "Company.ID"
+// @Param request body models.Company true "All fields are optional"
+// @Success 200 {string} Company has been updated
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /companies [put]
 func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -183,6 +208,15 @@ func (handler *CompaniesHandler) UpdateCompanyHandler(c *gin.Context) {
 	return
 }
 
+// DeleteCompaniesHandler
+// @Summary Delete company
+// @Produce json
+// @Param id query string true "Company.ID"
+// @Success 200 {string} Company has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Company not found
+// @Router /companies [delete]
 func (handler *CompaniesHandler) DeleteCompanyHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -211,6 +245,15 @@ func (handler *CompaniesHandler) DeleteCompanyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Company has beem deleted"})
 }
 
+// SearchCompaniesHandler
+// @Summary Search company by Name
+// @Produce json
+// @Param request body string true "For search" SchemaExample({ "name": "CompanyName" })
+// @Success 200 {string} Company has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Company not found
+// @Router /companies/search [get]
 func (handler *CompaniesHandler) SearchCompanyHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -227,8 +270,8 @@ func (handler *CompaniesHandler) SearchCompanyHandler(c *gin.Context) {
 	}
 
 	// Proceed to search
-	firstName := c.Query("firstName")
-	filter := bson.D{{"firstName", bson.D{{"$eq", firstName}}}}
+	Name := c.Query("Name")
+	filter := bson.D{{"name", bson.D{{"$eq", Name}}}}
 	cur, err := handler.collection.Find(c, filter)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})

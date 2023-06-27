@@ -37,6 +37,14 @@ func NewAuthHandler(ctx context.Context, collection *mongo.Collection) *AuthHand
 	}
 }
 
+// SignInHandler
+// @Summary Sign In User
+// @Produce json
+// @Success 200 {object} JWTOutput
+// @Failure 400 {string} BadRequest
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /signin [post]
 func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -76,6 +84,14 @@ func (handler *AuthHandler) SignInHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
+// RefreshHandler
+// @Summary Refresh token
+// @Produce json
+// @Success 200 {object} JWTOutput
+// @Failure 400 {string} BadRequest
+// @Failure 401 {string} Invalid session
+// @Failure 403 {string} Not logged in
+// @Router /refresh [post]
 func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	sessionToken := session.Get("token")
@@ -94,6 +110,12 @@ func (handler *AuthHandler) RefreshHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "New session issued"})
 }
 
+// SignOutHandler
+// @Summary Sign out user
+// @Produce json
+// @Success 200 {string} Signed out
+// @Failure 403 {string} Not logged in
+// @Router /signout [post]
 func (handler *AuthHandler) SignOutHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
@@ -101,12 +123,17 @@ func (handler *AuthHandler) SignOutHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Signed out..."})
 }
 
+// AuthMiddleware
+// @Summary Verify session
+// @Produce json
+// @Success 200 {string} Signed out
+// @Failure 403 {string} Not logged in
 func (handler *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		sessionToken := session.Get("token")
 		if sessionToken == nil {
-			c.JSON(http.StatusForbidden, gin.H{"message": "Not logged"})
+			c.JSON(http.StatusForbidden, gin.H{"message": "Not logged in"})
 			c.Abort()
 		}
 		c.Next()

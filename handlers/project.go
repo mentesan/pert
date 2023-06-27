@@ -32,6 +32,14 @@ func NewProjectsHandler(ctx context.Context, collection *mongo.Collection) *Proj
 	}
 }
 
+// ListProjectsHandler
+// @Summary Get projects list
+// @Produce json
+// @Success 200 {object} models.Project
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} Cant list projects
+// @Router /projects [get]
 func (handler *ProjectsHandler) ListProjectsHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -71,6 +79,14 @@ func (handler *ProjectsHandler) ListProjectsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, projects)
 }
 
+// NewProjectHandler
+// @Summary Add new project
+// @Produce json
+// @Param request body models.Project true "JSON for new project"
+// @Success 200 {string} Project added
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /projects [post]
 func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -126,6 +142,15 @@ func (handler *ProjectsHandler) NewProjectHandler(c *gin.Context) {
 	return
 }
 
+// UpdateProjectHandler
+// @Summary Update project information
+// @Produce json
+// @Param id query string true "Project.ID"
+// @Param request body models.Project true "All fields are optional"
+// @Success 200 {string} Project has been updated
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /projects [put]
 func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -252,6 +277,15 @@ func (handler *ProjectsHandler) UpdateProjectHandler(c *gin.Context) {
 
 }
 
+// DeleteProjectHandler
+// @Summary Delete project
+// @Produce json
+// @Param id query string true "Project.ID"
+// @Success 200 {string} Project has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Project not found
+// @Router /projects [delete]
 func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -280,6 +314,15 @@ func (handler *ProjectsHandler) DeleteProjectHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Project has beem deleted"})
 }
 
+// SearchProjectHandler
+// @Summary Search project by Name
+// @Produce json
+// @Param request body string true "For search" SchemaExample({ "name": "ProjectName" })
+// @Success 200 {string} Project has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Project not found
+// @Router /projects/search [get]
 func (handler *ProjectsHandler) SearchProjectHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)

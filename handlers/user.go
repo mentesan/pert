@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -32,6 +31,14 @@ func NewUsersHandler(ctx context.Context, collection *mongo.Collection) *UsersHa
 	}
 }
 
+// ListUsersHandler
+// @Summary Get users list
+// @Produce json
+// @Success	200 {object} models.User
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} Cant list users
+// @Router /users [get]
 func (handler *UsersHandler) ListUsersHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -63,6 +70,17 @@ func (handler *UsersHandler) ListUsersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// NewUserHandler
+// @Summary Add a new user
+// @Accept json
+// @Produce json
+// @Param request body models.User true "JSON for new user"
+// @Success	200 {string} User added
+// @Failure 400 {string} BadRequest
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} InternalServerError Bad Company
+// @Router /users [post]
 func (handler *UsersHandler) NewUserHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -106,30 +124,37 @@ func (handler *UsersHandler) NewUserHandler(c *gin.Context) {
 		}
 	}
 	// CompanyId
-	if len(strings.TrimSpace(user.CompanyId)) > 0 {
-		// Check if company really exists
-		client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
-		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-			log.Fatal(err)
-		}
-		companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
-		companiesHandler := NewCompaniesHandler(c, companiesCollection)
-		companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
-		companyCursor := companiesHandler.collection.FindOne(c, bson.M{
-			"_id": companyId,
-		})
-		// If query OK
-		if companyCursor.Err() == nil {
-			fCompanyId = true
+	if user.Type == "client" {
+		if len(strings.TrimSpace(user.CompanyId)) > 0 {
+			// Check if company really exists
+			client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+			if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+				log.Fatal(err)
+			}
+			companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+			companiesHandler := NewCompaniesHandler(c, companiesCollection)
+			companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
+			companyCursor := companiesHandler.collection.FindOne(c, bson.M{
+				"_id": companyId,
+			})
+			// If query OK
+			if companyCursor.Err() == nil {
+				fCompanyId = true
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid Company"})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Company must be selected"})
+			return
+
 		}
 	}
-
 	// If all fields OK, proceed to insert
 	if fEmail && fPassword && fFirstName && fLastName && fType && fCompanyId {
 		user.ID = primitive.NewObjectID()
 		_, err := handler.collection.InsertOne(c, user)
 		if err != nil {
-			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new user"})
 			return
 		}
@@ -139,6 +164,18 @@ func (handler *UsersHandler) NewUserHandler(c *gin.Context) {
 	return
 }
 
+// UpdateUserHandler
+// @Summary Update a user
+// @Accept json
+// @Produce json
+// @Param request body models.User true "All fields are optional"
+// @Param  id query string true "User.ID"
+// @Success	200 {string} User updated
+// @Failure 400 {string} BadRequest
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} InternalServerError Data malformed
+// @Router /users/:id [put]
 func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
@@ -220,32 +257,37 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 	}
 
 	// CompanyId
-	if len(strings.TrimSpace(user.CompanyId)) > 0 {
-		// Check if company really exists
-		client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
-		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-			log.Fatal(err)
-		}
-		log.Println("Connected to MongoDB")
-		companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
-		companiesHandler := NewCompaniesHandler(c, companiesCollection)
-		companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
-		companyCursor := companiesHandler.collection.FindOne(c, bson.M{
-			"_id": companyId,
-		})
-		if companyCursor.Err() != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Company does not exist"})
-			return
-		}
+	if user.Type == "client" {
+		if len(strings.TrimSpace(user.CompanyId)) > 0 {
+			// Check if company really exists
+			client, err := mongo.Connect(c, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+			if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+				log.Fatal(err)
+			}
+			log.Println("Connected to MongoDB")
+			companiesCollection := client.Database(os.Getenv("MONGO_DATABASE")).Collection("companies")
+			companiesHandler := NewCompaniesHandler(c, companiesCollection)
+			companyId, _ := primitive.ObjectIDFromHex(user.CompanyId)
+			companyCursor := companiesHandler.collection.FindOne(c, bson.M{
+				"_id": companyId,
+			})
+			if companyCursor.Err() != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Company"})
+				return
+			}
 
-		// If Company exists, proceed to update
-		update := bson.D{{"$set", bson.D{{"companyId", user.CompanyId}}}}
-		_, err = handler.collection.UpdateOne(c, filter, update)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			// If Company exists, proceed to update
+			update := bson.D{{"$set", bson.D{{"companyId", user.CompanyId}}}}
+			_, err = handler.collection.UpdateOne(c, filter, update)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			fieldUpdated++
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Company must be selected"})
 			return
 		}
-		fieldUpdated++
 	}
 
 	// If one or more field updated
@@ -257,13 +299,23 @@ func (handler *UsersHandler) UpdateUserHandler(c *gin.Context) {
 	return
 }
 
+// DeleteUserHandler
+// @Summary Delete a user
+// @Accept json
+// @Produce json
+// @Param  id query string true "User.ID"
+// @Success	200 {string} User deleted
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} User not found
+// @Router /users/:id [delete]
 func (handler *UsersHandler) DeleteUserHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)
 	sessionType := session.Get("type")
 
 	if sessionType != "admin" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Not authorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
 		return
 	} else {
 		// Compare email and usertype of Session with Database values
@@ -285,6 +337,16 @@ func (handler *UsersHandler) DeleteUserHandler(c *gin.Context) {
 	}
 }
 
+// SearchUserHandler
+// @Summary Search user by FirstName
+// @Accept json
+// @Produce json
+// @Param request body string true "For search" SchemaExample({ "firstName": "UserFirstName" })
+// @Success	200 {object} models.User
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} User not found
+// @Router /users/search/ [get]
 func (handler *UsersHandler) SearchUserHandler(c *gin.Context) {
 	// Get session values
 	session := sessions.Default(c)

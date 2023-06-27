@@ -1,0 +1,61 @@
+definitions:
+    Company:
+        x-go-package: pert-api/models
+    Project:
+        x-go-package: pert-api/models
+info:
+    title: '@Basepath /'
+paths:
+    /users:
+        get:
+            description: Get users list
+            operationId: list
+            responses:
+                "200":
+                    $ref: '#/responses/ListUsers'
+                "401":
+                    $ref: '#/responses/Error'
+            tags:
+                - users
+        post:
+            description: Add user
+            operationId: user
+            responses:
+                "200":
+                    $ref: '#/responses/NewUser'
+                "401":
+                    $ref: '#/responses/Error'
+            tags:
+                - add
+    /users/:id:
+        delete:
+            description: Delete user
+            operationId: user
+            responses:
+                "200":
+                    $ref: '#/responses/UserDeleted'
+                "401":
+                    $ref: '#/responses/Error'
+            tags:
+                - DELETE
+        get:
+            description: Delete user
+            operationId: user
+            responses:
+                "200":
+                    $ref: '#/responses/UserDeleted'
+                "401":
+                    $ref: '#/responses/Error'
+            tags:
+                - Search
+        put:
+            description: Update user
+            operationId: user
+            responses:
+                "200":
+                    $ref: '#/responses/UserUdated'
+                "401":
+                    $ref: '#/responses/Error'
+            tags:
+                - Update
+swagger: "2.0"

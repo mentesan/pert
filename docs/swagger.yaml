@@ -1,0 +1,823 @@
+basePath: /
+consumes:
+- application/json
+definitions:
+  handlers.JWTOutput:
+    properties:
+      expires:
+        type: string
+      token:
+        type: string
+    type: object
+  models.Company:
+    description: Company
+    properties:
+      address:
+        description: Company Address
+        type: string
+      contacts:
+        description: Contacts
+        items:
+          $ref: '#/definitions/models.Contact'
+        type: array
+      description:
+        description: Some important details
+        type: string
+      id:
+        type: string
+      info:
+        description: Company Info
+        type: string
+      name:
+        description: Company Name
+        type: string
+      publishedAt:
+        type: string
+      site:
+        description: Company Site
+        type: string
+      updatedAt:
+        description: Date of last update
+        type: string
+    type: object
+  models.Contact:
+    description: Company Contacts
+    properties:
+      email:
+        description: Email
+        type: string
+      firstName:
+        description: First name
+        type: string
+      info:
+        description: Info
+        type: string
+      lastName:
+        description: Last name
+        type: string
+      phone:
+        description: Phone/cel
+        type: string
+    type: object
+  models.Framework:
+    properties:
+      description:
+        description: Description
+        type: string
+      id:
+        type: string
+      name:
+        description: Framework name
+        type: string
+      phases:
+        description: Pentest phases
+        items:
+          $ref: '#/definitions/models.Phase'
+        type: array
+    type: object
+  models.Phase:
+    properties:
+      description:
+        description: Description
+        type: string
+      info:
+        description: Information
+        type: string
+      name:
+        description: Phase name
+        type: string
+      status:
+        description: |-
+          Status of completion
+          example: TODO|DOING|DONE
+        type: string
+      tools:
+        description: Phase common used tools
+        items:
+          $ref: '#/definitions/models.Tool'
+        type: array
+      url:
+        description: URL
+        type: string
+    type: object
+  models.Project:
+    properties:
+      companyId:
+        description: Company ID
+        type: string
+      createdAt:
+        description: Create Time
+        type: string
+      description:
+        description: Description
+        type: string
+      framework:
+        allOf:
+        - $ref: '#/definitions/models.Framework'
+        description: Framework to use for the project
+      id:
+        type: string
+      name:
+        description: Project Name
+        type: string
+      status:
+        description: 'Status: Approval|Open|Executing|Reporting|Retesting|Done'
+        type: string
+      targets:
+        description: 'Targets: URL and/or IP'
+        items:
+          $ref: '#/definitions/models.Target'
+        type: array
+      type:
+        description: 'Project type: BlackHat|GrayHat|WhiteHat'
+        type: string
+    type: object
+  models.Target:
+    properties:
+      description:
+        description: Description
+        type: string
+      ip:
+        description: Ip address
+        type: string
+      name:
+        description: Target name
+        type: string
+      network:
+        description: Network/AS
+        type: string
+      owner:
+        description: Whois Owner
+        type: string
+      url:
+        description: URL
+        type: string
+    type: object
+  models.Tool:
+    properties:
+      description:
+        description: Description
+        type: string
+      name:
+        description: Tool name
+        type: string
+      synopsis:
+        description: Synopsis and examples
+        type: string
+      url:
+        description: URL for reference
+        type: string
+    type: object
+  models.User:
+    properties:
+      companyId:
+        description: If it's a "client" type, it needs to have a company
+        type: string
+      email:
+        description: User email, used to login
+        type: string
+      firstName:
+        description: First name
+        type: string
+      lastName:
+        description: Last name
+        type: string
+      password:
+        description: Password
+        type: string
+      type:
+        description: 'Type: admin|pentester|client'
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: mentesan@gmail.com
+    name: Fabio Almeida
+    url: https://github.com/mentesan
+  license:
+    name: MIT
+    url: https://github.com/mentesan/pert-api/blob/main/LICENSE
+  title: Pentest Execution and Reporting Tool (PERT) API
+  version: 0.0.1
+paths:
+  /companies:
+    delete:
+      parameters:
+      - description: Company.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete company
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Company'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get companies list
+    post:
+      parameters:
+      - description: JSON for new company
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Company'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Add new company
+    put:
+      parameters:
+      - description: Company.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: All fields are optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Company'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Update company information
+  /companies/search:
+    get:
+      parameters:
+      - description: For search
+        in: body
+        name: request
+        required: true
+        schema:
+          example: '{ "name": "CompanyName" }'
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Search company by Name
+  /contacts:
+    delete:
+      parameters:
+      - description: Contact.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete contact
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Contact'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get contacts list
+    post:
+      parameters:
+      - description: JSON for new contact
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Contact'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Add new contact
+    put:
+      parameters:
+      - description: Contact.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: All fields are optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Contact'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Update contact information
+  /contacts/search:
+    get:
+      parameters:
+      - description: For search
+        in: body
+        name: request
+        required: true
+        schema:
+          example: '{ "name": "ContactFirstName" }'
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Search contact by FirstName
+  /projects:
+    delete:
+      parameters:
+      - description: Project.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete project
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Project'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get projects list
+    post:
+      parameters:
+      - description: JSON for new project
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Add new project
+    put:
+      parameters:
+      - description: Project.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: All fields are optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Update project information
+  /projects/search:
+    get:
+      parameters:
+      - description: For search
+        in: body
+        name: request
+        required: true
+        schema:
+          example: '{ "name": "ProjectName" }'
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Search project by Name
+  /refresh:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.JWTOutput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Refresh token
+  /signin:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.JWTOutput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Sign In User
+  /signout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Sign out user
+  /users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get users list
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: JSON for new user
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Add a new user
+  /users/:id:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: User.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete a user
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: All fields are optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      - description: User.ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a user
+  /users/search/:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: For search
+        in: body
+        name: request
+        required: true
+        schema:
+          example: '{ "firstName": "UserFirstName" }'
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Search user by FirstName
+produces:
+- application/json
+schemes:
+- http
+swagger: "2.0"

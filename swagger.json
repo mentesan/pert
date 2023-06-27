@@ -1,4 +1,95 @@
 {
   "swagger": "2.0",
-  "paths": {}
+  "info": {
+    "title": "@Basepath /"
+  },
+  "paths": {
+    "/users": {
+      "get": {
+        "description": "Get users list",
+        "tags": [
+          "users"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ListUsers"
+          },
+          "401": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "description": "Add user",
+        "tags": [
+          "add"
+        ],
+        "operationId": "user",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/NewUser"
+          },
+          "401": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      }
+    },
+    "/users/:id": {
+      "get": {
+        "description": "Delete user",
+        "tags": [
+          "Search"
+        ],
+        "operationId": "user",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/UserDeleted"
+          },
+          "401": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "description": "Update user",
+        "tags": [
+          "Update"
+        ],
+        "operationId": "user",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/UserUdated"
+          },
+          "401": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete user",
+        "tags": [
+          "DELETE"
+        ],
+        "operationId": "user",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/UserDeleted"
+          },
+          "401": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Company": {
+      "x-go-package": "pert-api/models"
+    },
+    "Project": {
+      "x-go-package": "pert-api/models"
+    }
+  }
 }

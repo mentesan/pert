@@ -26,6 +26,14 @@ func NewContactsHandler(ctx context.Context, collection *mongo.Collection) *Cont
 	}
 }
 
+// ListContactsHandler
+// @Summary Get contacts list
+// @Produce json
+// @Success 200 {object} models.Contact
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} Cant list contacts
+// @Router /contacts [get]
 func (handler *ContactsHandler) ListContactsHandler(c *gin.Context) {
 	log.Printf("Request to MongoDB")
 	cur, err := handler.collection.Find(handler.ctx, bson.M{})
@@ -44,6 +52,15 @@ func (handler *ContactsHandler) ListContactsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, contacts)
 }
 
+// NewContactsHandler
+// @Summary Add new contact
+// @Produce json
+// @Param request body models.Contact true "JSON for new contact"
+// @Success 200 {string} Contact added
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Failure 500 {string} Cant list users
+// @Router /contacts [post]
 func (handler *ContactsHandler) NewContactHandler(c *gin.Context) {
 	var contact models.Contact
 	if err := c.ShouldBindJSON(&contact); err != nil {
@@ -62,6 +79,15 @@ func (handler *ContactsHandler) NewContactHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, contact)
 }
 
+// UpdateContactHandler
+// @Summary Update contact information
+// @Produce json
+// @Param id query string true "Contact.ID"
+// @Param request body models.Contact true "All fields are optional"
+// @Success 200 {string} Contact has been updated
+// @Failure 401 {string} Unauthorized
+// @Failure 403 {string} Not logged in
+// @Router /contacts [put]
 func (handler *ContactsHandler) UpdateContactHandler(c *gin.Context) {
 	id := c.Param("id")
 	var contact models.Contact
@@ -92,6 +118,15 @@ func (handler *ContactsHandler) UpdateContactHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Contact has been updated"})
 }
 
+// DeleteContactHandler
+// @Summary Delete contact
+// @Produce json
+// @Param id query string true "Contact.ID"
+// @Success 200 {string} Contact has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Contact not found
+// @Router /contacts [delete]
 func (handler *ContactsHandler) DeleteContactHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -105,6 +140,15 @@ func (handler *ContactsHandler) DeleteContactHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Contact has beem deleted"})
 }
 
+// SearchContactHandler
+// @Summary Search contact by FirstName
+// @Produce json
+// @Param request body string true "For search" SchemaExample({ "name": "ContactFirstName" })
+// @Success 200 {string} Contact has been deleted
+// @Failure 401 {string} Not authorized
+// @Failure 403 {string} Not logged in
+// @Failure 404 {string} Contact not found
+// @Router /contacts/search [get]
 func (handler *ContactsHandler) SearchContactHandler(c *gin.Context) {
 	firstName := c.Query("firstName")
 
